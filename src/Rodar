@@ -1,0 +1,5 @@
+cd src
+javac Server.java Client.java
+java Server.java
+java Client.java
+java Client.java start

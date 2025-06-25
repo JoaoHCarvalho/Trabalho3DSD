@@ -55,21 +55,21 @@ public class Client {
     }
 
     private static void enterCriticalSection() {
-        System.out.println("Cliente " + (id+1) + " entrou na seção crítica.");
+        System.out.println("Cliente " + (id+1) + " entrou na regiao critica.");
         try {
             System.out.println("Abacate");
             Thread.sleep(new Random().nextInt(3000) + 1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        System.out.println("Cliente " + (id+1) + " saiu da seção crítica.");
+        System.out.println("Cliente " + (id+1) + " saiu da regiao critica.");
     }
 
     private static void passToken() {
         try (Socket next = new Socket(nextIP, nextPort)) {
             PrintWriter writer = new PrintWriter(next.getOutputStream(), true);
             writer.println("TOKEN");
-            System.out.println("Cliente " + (id+1) + " passou o token para o próximo.");
+            System.out.println("Cliente " + (id+1) + " passou o token para o proximo.");
         } catch (IOException e) {
             e.printStackTrace();
         }

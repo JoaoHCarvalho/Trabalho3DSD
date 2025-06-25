@@ -1,92 +1,77 @@
 package src;
+
 import java.io.*;
 import java.net.*;
-import java.util.*;
+import java.util.Random;
 
 public class Client {
-    private static int myId = new Random().nextInt(1000);
-    private static int serverPort = 5000;
-    private static int myListenPort;
-    private static boolean liderReconhecido = false;
+    private static int id;
+    private static String nextIP;
+    private static int nextPort;
+    private static final int BASE_PORT = 6000;
 
-    public static void main(String[] args) throws Exception {
-        ServerSocket listenerSocket = new ServerSocket(0);
-        myListenPort = listenerSocket.getLocalPort();
-
-
-        Socket socket = new Socket("localhost", serverPort);
-        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        out.writeInt(myId);          //ID do processo
-        out.writeInt(myListenPort);  //porta de escuta
-        DataInputStream in = new DataInputStream(socket.getInputStream());
-        int nextPort = in.readInt(); //porta do próximo no anel
-        socket.close();
-
-        System.out.println("[Processo " + myId + "] Porta própria: " + myListenPort + ", próximo: " + nextPort);
-
-        //inicia thread para escutar mensagens
-        new Thread(() -> {
-            try (ServerSocket listener = listenerSocket) {
-                while (true) {
-                    Socket s = listener.accept();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                    String msg = reader.readLine();
-                    handleMessage(msg, nextPort);
-                    s.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        //aguarda os outros clientes
-        Thread.sleep(3000);
-
-        if (args.length > 0 && args[0].equals("start")) {
-            System.out.println("[Processo " + myId + "] Iniciando eleicao");
-            sendToNext(nextPort, "ELEICAO:" + myId);
-        }
-    }
-
-    private static void handleMessage(String msg, int nextPort) {
-        if (msg.startsWith("ELEICAO:")) {
-            String[] parts = msg.replace("ELEICAO:", "").split(",");
-            Set<Integer> idSet = new HashSet<>();
-            for (String s : parts) idSet.add(Integer.parseInt(s));
-
-            System.out.println("[Processo " + myId + "] Recebeu ELEICAO com IDs: " + idSet);
-
-            if (idSet.contains(myId)) {
-                int elected = Collections.max(idSet);
-                System.out.println("[Processo " + myId + "] ELEICAO CONCLUIDA Lider: " + elected);
-                sendToNext(nextPort, "LIDER:" + elected);
-            } else {
-                idSet.add(myId);
-                StringBuilder newMsg = new StringBuilder("ELEICAO:");
-                for (int id : idSet) newMsg.append(id).append(",");
-                sendToNext(nextPort, newMsg.toString());
-            }
-
-        } else if (msg.startsWith("LIDER:")) {
-            int liderId = Integer.parseInt(msg.replace("LIDER:", ""));
-            if (!liderReconhecido) {
-                liderReconhecido = true;
-                System.out.println("[Processo " + myId + "] Reconheceu o líder: " + liderId);
-                if (liderId != myId) {
-                    sendToNext(nextPort, msg); //propaga para frente
-                }
-            }
-        }
-    }
-
-    private static void sendToNext(int port, String msg) {
+    public static void main(String[] args) {
         try {
-            Socket s = new Socket("localhost", port);
-            PrintWriter out = new PrintWriter(s.getOutputStream(), true);
-            out.println(msg);
-            s.close();
+            Socket serverConnection = new Socket(args[0], 5000);
+            BufferedReader in = new BufferedReader(new InputStreamReader(serverConnection.getInputStream()));
+
+            id = Integer.parseInt(in.readLine());
+            nextIP = in.readLine();
+            nextPort = Integer.parseInt(in.readLine());
+
+            String possibleToken = in.readLine();
+            if ("TOKEN".equals(possibleToken))
+            {
+                enterCriticalSection();
+                passToken();
+            }
+            int myPort = BASE_PORT + id;
+            System.out.println("Cliente " + (id+1) + " ouvindo na porta " + myPort);
+
+            ServerSocket listenSocket = new ServerSocket(myPort);
+
+            // Thread para escutar o token
+            new Thread(() -> {
+                while (true)
+                {
+                    try (Socket incoming = listenSocket.accept()) {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(incoming.getInputStream()));
+                        String msg = reader.readLine();
+                        if ("TOKEN".equals(msg))
+                        {
+                            enterCriticalSection();
+                            passToken();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+
         } catch (IOException e) {
-            System.out.println("[Processo " + myId + "] Erro ao enviar para o próximo: " + e.getMessage());
+            System.out.println("Erro ao conectar ao servidor " + args[0]);
+            e.printStackTrace();
+        }
+    }
+
+    private static void enterCriticalSection() {
+        System.out.println("Cliente " + (id+1) + " entrou na seção crítica.");
+        try {
+            System.out.println("Abacate");
+            Thread.sleep(new Random().nextInt(3000) + 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Cliente " + (id+1) + " saiu da seção crítica.");
+    }
+
+    private static void passToken() {
+        try (Socket next = new Socket(nextIP, nextPort)) {
+            PrintWriter writer = new PrintWriter(next.getOutputStream(), true);
+            writer.println("TOKEN");
+            System.out.println("Cliente " + (id+1) + " passou o token para o próximo.");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

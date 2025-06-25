@@ -1,53 +1,62 @@
 package src;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
 public class Server {
-    public static final int PORT = 5000;
-    public static final int MAX_CLIENTS = 5;
+    private static final int PORT = 5000;
+    private static final int TOTAL_CLIENTS = 5;
+    private static final int BASE_PORT = 6000;
 
-    private static final List<Integer> clientIds = new ArrayList<>();
-    private static final List<Integer> listeningPorts = new ArrayList<>();
-    private static final List<Socket> clientSockets = new ArrayList<>();
+    private static class ClientInfo {
+        Socket socket;
+        String ip;
+        int id;
+
+        ClientInfo(Socket socket, String ip, int id) {
+            this.socket = socket;
+            this.ip = ip;
+            this.id = id;
+        }
+    }
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(PORT);
-        System.out.println();
-        System.out.println("Servidor iniciado na porta " + PORT + ". Aguardando " + MAX_CLIENTS + " clientes...");
+        System.out.println("Servidor esperando conexões...");
 
-        while (clientIds.size() < MAX_CLIENTS) {
-            Socket client = serverSocket.accept();
-            DataInputStream in = new DataInputStream(client.getInputStream());
-            int clientId = in.readInt();            //recebe ID
-            int clientListenPort = in.readInt();    //recebe porta de escuta
+        List<ClientInfo> clients = new ArrayList<>();
 
-            clientIds.add(clientId);
-            listeningPorts.add(clientListenPort);
-            clientSockets.add(client);
-
-            System.out.println("Cliente " + clientId + " conectado na porta " + clientListenPort + " (" + clientIds.size() + "/5)");
+        for (int i = 0; i < TOTAL_CLIENTS; i++)
+        {
+            Socket clientSocket = serverSocket.accept();
+            String clientIP = clientSocket.getInetAddress().getHostAddress();
+            clients.add(new ClientInfo(clientSocket, clientIP, i));
+            System.out.println("Cliente " + (i+1) + " conectado: " + clientIP);
         }
 
-        System.out.println();
-        System.out.println("Anel formado:");
-        for (int i = 0; i < clientIds.size(); i++) {
-            int atual = clientIds.get(i);
-            int proximo = clientIds.get((i + 1) % clientIds.size());
-            System.out.println("Processo " + atual + " -> " + proximo);
+        // Envia para cada cliente: seu ID, IP e porta do próximo
+        for (int i = 0; i < TOTAL_CLIENTS; i++)
+        {
+            ClientInfo current = clients.get(i);
+            ClientInfo next = clients.get((i + 1) % TOTAL_CLIENTS);
+
+            PrintWriter out = new PrintWriter(current.socket.getOutputStream(), true);
+            out.println(current.id);
+            out.println(next.ip);
+            out.println(BASE_PORT + next.id);
         }
 
-        System.out.println();
-        System.out.println("Enviando portas dos próximos processos...");
-        for (int i = 0; i < clientSockets.size(); i++) {
-            int nextPort = listeningPorts.get((i + 1) % clientSockets.size());
-            DataOutputStream out = new DataOutputStream(clientSockets.get(i).getOutputStream());
-            out.writeInt(nextPort);
-            clientSockets.get(i).close(); //encerra conexao com o cliente
-        }
+        // Envia token inicial ao cliente 1
+        PrintWriter out = new PrintWriter(clients.get(0).socket.getOutputStream(), true);
+        out.println("TOKEN");
+        System.out.println("Token enviado ao cliente 1.");
 
+        // Fecha conexões iniciais
+        for (ClientInfo c : clients)
+        {
+            c.socket.close();
+        }
         serverSocket.close();
-        System.out.println();
-        System.out.println("Servidor finalizado. A eleição pode ser iniciada por qualquer cliente.");
     }
 }

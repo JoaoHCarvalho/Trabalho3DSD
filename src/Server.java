@@ -23,7 +23,7 @@ public class Server {
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(PORT);
-        System.out.println("Servidor esperando conexões...");
+        System.out.println("Servidor esperando conexoes...");
 
         List<ClientInfo> clients = new ArrayList<>();
 

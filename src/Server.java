@@ -31,6 +31,7 @@ public class Server {
         {
             Socket clientSocket = serverSocket.accept();
             String clientIP = clientSocket.getInetAddress().getHostAddress();
+
             clients.add(new ClientInfo(clientSocket, clientIP, i));
             System.out.println("Cliente " + (i+1) + " conectado: " + clientIP);
         }
@@ -40,6 +41,7 @@ public class Server {
         {
             ClientInfo current = clients.get(i);
             ClientInfo next = clients.get((i + 1) % TOTAL_CLIENTS);
+            System.out.println("Cliente " + (current.id+1) + " receberá: próximo = " + next.ip + ":" + (BASE_PORT + next.id));
 
             PrintWriter out = new PrintWriter(current.socket.getOutputStream(), true);
             out.println(current.id);

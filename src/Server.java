@@ -41,7 +41,7 @@ public class Server {
         {
             ClientInfo current = clients.get(i);
             ClientInfo next = clients.get((i + 1) % TOTAL_CLIENTS);
-            System.out.println("Cliente " + (current.id+1) + " receberá: próximo = " + next.ip + ":" + (BASE_PORT + next.id));
+            System.out.println("Cliente " + (current.id+1) + ": proximo cliente= " + next.ip + ":" + (BASE_PORT + next.id));
 
             PrintWriter out = new PrintWriter(current.socket.getOutputStream(), true);
             out.println(current.id);
